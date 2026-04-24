@@ -34,6 +34,24 @@ FastAPI backend and presents a professional trading research UI.
 
 ## Getting started
 
+### Fast path — one-command runner
+
+```bash
+./run.sh                 # macOS / Linux (auto-installs deps)
+run.bat                  # Windows
+```
+
+The `run.sh` / `run.bat` scripts auto-detect pnpm → npm → yarn, install
+dependencies on first run, and start the Vite dev server at
+[http://localhost:5173](http://localhost:5173).
+
+| Env var | Default | Purpose                                  |
+| ------- | ------- | ---------------------------------------- |
+| `PORT`  | `5173`  | Dev server port                          |
+| `MODE`  | `dev`   | `dev` \| `build` \| `preview`            |
+
+### Manual
+
 ```bash
 # Install dependencies
 pnpm install       # or npm install / yarn
