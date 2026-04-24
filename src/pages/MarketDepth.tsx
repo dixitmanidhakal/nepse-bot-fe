@@ -1,10 +1,17 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
+import {
+  Search,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  Database,
+  AlertTriangle,
+} from "lucide-react";
+import { AxiosError } from "axios";
 import { depthApi } from "@/api/depth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoader } from "@/components/shared/LoadingSpinner";
-import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { formatNumber, formatVolume } from "@/lib/utils";
 
 const POPULAR_SYMBOLS = [
@@ -18,9 +25,29 @@ const POPULAR_SYMBOLS = [
   "AKJCL",
 ];
 
+interface DepthErrorPayload {
+  message?: string;
+  reason?: string;
+  hint?: string;
+}
+
+function parseUpstreamError(err: unknown): DepthErrorPayload {
+  const axiosErr = err as AxiosError<{ message?: string } | unknown>;
+  const data = axiosErr?.response?.data as
+    | { message?: string; reason?: string; hint?: string }
+    | undefined;
+  return {
+    message: data?.message || axiosErr?.message || "Unknown error",
+    reason: data?.reason,
+    hint: data?.hint,
+  };
+}
+
 export function MarketDepth() {
   const [symbol, setSymbol] = useState("NABIL");
   const [inputSymbol, setInputSymbol] = useState("NABIL");
+  const [seeding, setSeeding] = useState(false);
+  const [seedMsg, setSeedMsg] = useState<string | null>(null);
 
   const {
     data: analysis,
@@ -42,6 +69,21 @@ export function MarketDepth() {
 
   const handleSearch = () => {
     if (inputSymbol.trim()) setSymbol(inputSymbol.trim().toUpperCase());
+  };
+
+  const handleSeed = async () => {
+    setSeeding(true);
+    setSeedMsg(null);
+    try {
+      const resp = await depthApi.seed({ limit: 25 });
+      setSeedMsg(`Seeded ${resp.seeded} symbols — refreshing…`);
+      await refetch();
+    } catch (err) {
+      const info = parseUpstreamError(err);
+      setSeedMsg(`Seed failed: ${info.reason || info.message}`);
+    } finally {
+      setSeeding(false);
+    }
   };
 
   const depth = current?.data;
@@ -114,12 +156,53 @@ export function MarketDepth() {
       </Card>
 
       {isLoading && <PageLoader text={`Loading depth for ${symbol}...`} />}
-      {error && (
-        <ErrorMessage
-          message={`No depth data for ${symbol}. Fetch market depth data first.`}
-          onRetry={() => refetch()}
-        />
-      )}
+      {error && (() => {
+        const info = parseUpstreamError(error);
+        return (
+          <Card className="border-amber-500/40 bg-amber-500/5">
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    {info.message || `No depth data for ${symbol}`}
+                  </p>
+                  {info.reason && (
+                    <p className="text-xs text-muted-foreground mt-1.5 font-mono break-all">
+                      {info.reason}
+                    </p>
+                  )}
+                  {info.hint && (
+                    <p className="text-xs text-muted-foreground mt-2 italic">
+                      {info.hint}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button
+                  onClick={handleSeed}
+                  disabled={seeding}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  <Database className="w-3.5 h-3.5" />
+                  {seeding ? "Seeding…" : "Seed 25 symbols"}
+                </button>
+                <button
+                  onClick={() => refetch()}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs rounded-md bg-secondary text-foreground hover:bg-accent transition-colors"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Retry
+                </button>
+              </div>
+              {seedMsg && (
+                <p className="text-xs text-muted-foreground">{seedMsg}</p>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {depth && (
         <>

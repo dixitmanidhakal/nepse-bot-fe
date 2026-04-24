@@ -52,4 +52,13 @@ export const depthApi = {
     );
     return data;
   },
+
+  seed: async (
+    params: { limit?: number; symbols?: string } = {}
+  ): Promise<{ success: boolean; seeded: number; results: unknown }> => {
+    const { data } = await apiClient.post(`/api/v1/depth/seed`, null, {
+      params,
+    });
+    return data;
+  },
 };
