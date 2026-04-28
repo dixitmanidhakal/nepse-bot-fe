@@ -1,55 +1,38 @@
-# NEPSE Bot Frontend - Implementation Plan
+# Universal Data Layer — TODO
 
-## Tech Stack
+## Phase 1 — Abstraction + Free provider
 
-- React 18 + Vite + TypeScript
-- Tailwind CSS + shadcn/ui (UI components)
-- React Router v6 (navigation)
-- TanStack Query v5 (data fetching + caching)
-- Axios (HTTP client)
-- Recharts (charts)
-- Lucide React (icons)
+- [ ] `src/types/canonical.ts` — CanonicalStock/Bar/Depth/Trade/Floorsheet/Sector/Freshness
+- [ ] `src/data/providers/types.ts` — DataProvider interface
+- [ ] `src/data/providers/freeProvider.ts` — maps /api/v1/free/\* → canonical
+- [ ] `src/data/index.ts` — provider selector (env: VITE_DATA_PROVIDER)
+- [ ] `src/analytics/indicators.ts` — RSI, MACD, SMA/EMA, BB on CanonicalBar[]
+- [ ] `src/analytics/patterns.ts` — basic patterns on CanonicalBar[]
+- [ ] `src/analytics/screeners.ts` — momentum, oversold, volume on CanonicalStock[]
+- [ ] `src/analytics/recommendations.ts` — scoring + top-n
+- [ ] build passes
 
-## Pages
+## Phase 2 — Rewire pages
 
-- [ ] Dashboard - Health check, data status, quick stats
-- [ ] Data Manager - Trigger data fetches
-- [ ] Stock Analysis - Indicators, patterns, signals per stock
-- [ ] Sector Analysis - Sector performance, rotation, bullish sectors
-- [ ] Stock Screener - Filter stocks by criteria
-- [ ] Market Depth - Order book, walls, imbalance
-- [ ] Floorsheet - Trades, broker activity, institutional tracking
+- [ ] Dashboard.tsx → data.getMarketSnapshot + analytics.screeners
+- [ ] StockAnalysis.tsx → data.getOhlcv + analytics.indicators + analytics.patterns
+- [ ] Recommendations.tsx → data.getMarketSnapshot + analytics.recommendations
+- [ ] MarketDepth.tsx → data.getDepth (canonical)
+- [ ] Floorsheet.tsx → data.getFloorsheet (canonical)
+- [ ] SectorAnalysis.tsx → data.getSectors + data.getMarketSnapshot
+- [ ] StockScreener.tsx → analytics.screeners
+- [ ] QuantAdvanced.tsx / QuantLab.tsx → analytics.\* fallbacks
+- [ ] Calendar.tsx → graceful "upstream unavailable" fallback
+- [ ] DataManager.tsx → data.getFreshness visualization
 
-## Steps
+## Phase 3 — Deploy & verify
 
-### Phase 1: Project Setup
+- [ ] `npm run build` passes
+- [ ] commit + push origin/main
+- [ ] Vercel redeploy (auto via git push)
+- [ ] Verify every page loads live data in incognito
 
-- [x] Create TODO.md
-- [ ] Scaffold Vite + React + TypeScript project
-- [ ] Install dependencies (Tailwind, React Router, TanStack Query, Axios, Recharts, Lucide)
-- [ ] Configure Tailwind CSS
-- [ ] Setup project structure
+## Phase 4 (future) — Additional providers
 
-### Phase 2: Core Infrastructure
-
-- [ ] Create Axios API client (src/api/client.ts)
-- [ ] Create API modules (data, indicators, sectors, stocks, patterns, depth, floorsheet)
-- [ ] Create TypeScript types (src/types/index.ts)
-- [ ] Create Layout (Sidebar + Header)
-
-### Phase 3: Pages
-
-- [ ] Dashboard page
-- [ ] Data Manager page
-- [ ] Stock Analysis page
-- [ ] Sector Analysis page
-- [ ] Stock Screener page
-- [ ] Market Depth page
-- [ ] Floorsheet page
-
-### Phase 4: Polish
-
-- [ ] Loading states
-- [ ] Error handling
-- [ ] Responsive design
-- [ ] Test all endpoints
+- [ ] `providers/legacyProvider.ts` (for eventual Postgres-backed prod)
+- [ ] `providers/mockProvider.ts` (for tests)

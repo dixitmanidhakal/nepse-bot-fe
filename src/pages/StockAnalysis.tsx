@@ -122,8 +122,8 @@ export function StockAnalysis() {
 
   // Build chart data from moving averages if available.
   // Backend returns sma_20 as { current, values: [...] }, so pick the array safely.
-  const sma20Entry = maData?.indicators?.sma?.sma_20;
-  const sma20Values: number[] = Array.isArray(sma20Entry)
+  const sma20Entry: any = (maData as any)?.indicators?.sma?.sma_20;
+  const sma20Values: Array<number | null> = Array.isArray(sma20Entry)
     ? sma20Entry
     : Array.isArray(sma20Entry?.values)
     ? sma20Entry.values
