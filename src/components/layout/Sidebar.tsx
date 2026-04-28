@@ -12,6 +12,7 @@ import {
   Gauge,
   Home,
   Sparkles,
+  FlaskConical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,7 @@ const navItems = [
   { to: "/data-manager", icon: Database, label: "Data Manager" },
   { to: "/calendar", icon: CalendarDays, label: "Calendar" },
   { to: "/quant", icon: Gauge, label: "Quant Lab" },
+  { to: "/quant-advanced", icon: FlaskConical, label: "Advanced Quant" },
 ];
 
 export function Sidebar() {

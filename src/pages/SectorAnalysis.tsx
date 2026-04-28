@@ -55,12 +55,34 @@ export function SectorAnalysis() {
       />
     );
 
-  const sectors = allSectors?.sectors || [];
+  // Backend returns rows with sector_id/sector_name/current_index/total_stocks.
+  // Normalise to the shape this component already renders.
+  const allSectorsAny: any = allSectors;
+  const rawSectors: any[] = allSectorsAny?.sectors || [];
+  const sectors = rawSectors.map((s: any) => ({
+    id: s.sector_id ?? s.id,
+    name: s.sector_name ?? s.name,
+    code: s.sector_code ?? s.code,
+    current_value: s.current_index ?? s.current_value,
+    change_percent: s.change_percent,
+    momentum_30d: s.momentum_30d,
+    stock_count: s.total_stocks ?? s.stock_count,
+    trend: s.trend,
+  }));
   const chartData = sectors.slice(0, 10).map((s: any) => ({
-    name: s.name?.substring(0, 8) || "Unknown",
+    name: (s.name ?? "").substring(0, 8) || "Unknown",
     momentum: s.momentum_30d || 0,
     change: s.change_percent || 0,
   }));
+  const bullishAny: any = bullish;
+  const rotationAny: any = rotation;
+  const bullishCount =
+    bullishAny?.count ??
+    bullishAny?.sectors?.length ??
+    allSectorsAny?.bullish_sectors ??
+    0;
+  const bearishCount = allSectorsAny?.bearish_sectors ?? 0;
+  const gainingCount = rotationAny?.gaining_momentum?.length ?? 0;
 
   return (
     <div className="space-y-6">
@@ -100,7 +122,7 @@ export function SectorAnalysis() {
               Bullish Sectors
             </p>
             <p className="text-2xl font-bold text-green-400 mt-1">
-              {bullish?.sectors?.length || allSectors?.bullish_count || 0}
+              {bullishCount}
             </p>
           </CardContent>
         </Card>
@@ -110,7 +132,7 @@ export function SectorAnalysis() {
               Bearish Sectors
             </p>
             <p className="text-2xl font-bold text-red-400 mt-1">
-              {allSectors?.bearish_count || 0}
+              {bearishCount}
             </p>
           </CardContent>
         </Card>
@@ -120,7 +142,7 @@ export function SectorAnalysis() {
               Gaining Momentum
             </p>
             <p className="text-2xl font-bold text-yellow-400 mt-1">
-              {rotation?.gaining?.length || 0}
+              {gainingCount}
             </p>
           </CardContent>
         </Card>
@@ -333,7 +355,7 @@ export function SectorAnalysis() {
       )}
 
       {/* Sector Rotation */}
-      {rotation?.success && (
+      {rotationAny?.success && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
@@ -343,14 +365,16 @@ export function SectorAnalysis() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {rotation.gaining?.length > 0 ? (
+              {(rotationAny.gaining_momentum ?? []).length > 0 ? (
                 <div className="space-y-2">
-                  {rotation.gaining.map((s: any) => (
+                  {rotationAny.gaining_momentum.map((s: any) => (
                     <div
-                      key={s.id}
+                      key={s.sector_id ?? s.id}
                       className="flex items-center justify-between py-1.5 border-b border-border last:border-0"
                     >
-                      <span className="text-sm text-foreground">{s.name}</span>
+                      <span className="text-sm text-foreground">
+                        {s.sector_name ?? s.name}
+                      </span>
                       <span className="text-sm font-medium text-green-400">
                         {formatPercent(s.momentum_30d)}
                       </span>
@@ -372,14 +396,16 @@ export function SectorAnalysis() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {rotation.losing?.length > 0 ? (
+              {(rotationAny.losing_momentum ?? []).length > 0 ? (
                 <div className="space-y-2">
-                  {rotation.losing.map((s: any) => (
+                  {rotationAny.losing_momentum.map((s: any) => (
                     <div
-                      key={s.id}
+                      key={s.sector_id ?? s.id}
                       className="flex items-center justify-between py-1.5 border-b border-border last:border-0"
                     >
-                      <span className="text-sm text-foreground">{s.name}</span>
+                      <span className="text-sm text-foreground">
+                        {s.sector_name ?? s.name}
+                      </span>
                       <span className="text-sm font-medium text-red-400">
                         {formatPercent(s.momentum_30d)}
                       </span>

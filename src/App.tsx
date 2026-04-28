@@ -11,6 +11,7 @@ import { Floorsheet } from "@/pages/Floorsheet";
 import { DataManager } from "@/pages/DataManager";
 import { CalendarPage } from "@/pages/Calendar";
 import { QuantLab } from "@/pages/QuantLab";
+import { QuantAdvanced } from "@/pages/QuantAdvanced";
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
           <Route path="data-manager" element={<DataManager />} />
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="quant" element={<QuantLab />} />
+          <Route path="quant-advanced" element={<QuantAdvanced />} />
         </Route>
       </Routes>
     </BrowserRouter>

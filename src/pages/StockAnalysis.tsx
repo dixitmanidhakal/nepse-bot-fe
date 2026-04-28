@@ -78,15 +78,62 @@ export function StockAnalysis() {
     }
   };
 
-  const s = summary?.summary;
-  const p = patterns?.summary;
+  // Backend returns fields at top level, grouped under trend/momentum/volatility/volume.
+  // Flatten into the shape this component expects.
+  const sr: any = summary;
+  const s = sr
+    ? {
+        current_price: sr.current_price,
+        rsi_14: sr.momentum?.rsi_14,
+        macd: sr.momentum?.macd,
+        macd_signal: sr.momentum?.macd_signal,
+        macd_histogram: sr.momentum?.macd_histogram,
+        sma_20: sr.trend?.sma_20,
+        sma_50: sr.trend?.sma_50,
+        ema_20: sr.trend?.ema_20,
+        atr_14: sr.volatility?.atr_14,
+        bb_upper: sr.volatility?.bb_upper,
+        bb_middle: sr.volatility?.bb_middle,
+        bb_lower: sr.volatility?.bb_lower,
+        volume_ratio: sr.volume?.volume_ratio,
+      }
+    : null;
 
-  // Build chart data from moving averages if available
-  const chartData = maData?.indicators?.sma
-    ? Object.entries(maData.indicators.sma as Record<string, number[]>)
-        .find(([key]) => key === "sma_20")?.[1]
-        ?.map((val: number, i: number) => ({ index: i, sma20: val })) || []
+  const pr: any = patterns;
+  const trendStrengthMap: Record<string, number> = {
+    weak: 0.33,
+    moderate: 0.66,
+    strong: 1,
+  };
+  const p = pr
+    ? {
+        nearest_support: pr.nearest_support?.level ?? null,
+        nearest_resistance: pr.nearest_resistance?.level ?? null,
+        primary_trend: pr.primary_trend?.type ?? null,
+        trend_strength:
+          trendStrengthMap[pr.primary_trend?.strength] ?? undefined,
+        active_patterns: pr.active_patterns ?? [],
+      }
+    : null;
+
+  const sig: any = signals;
+  const signalValue = sig?.overall_signal;
+  const signalStrength = sig?.signal_strength;
+
+  // Build chart data from moving averages if available.
+  // Backend returns sma_20 as { current, values: [...] }, so pick the array safely.
+  const sma20Entry = maData?.indicators?.sma?.sma_20;
+  const sma20Values: number[] = Array.isArray(sma20Entry)
+    ? sma20Entry
+    : Array.isArray(sma20Entry?.values)
+    ? sma20Entry.values
     : [];
+  const chartData = sma20Values
+    .map((val, i) => ({ index: i, sma20: val }))
+    .filter((d) => d.sma20 !== null && d.sma20 !== undefined);
+  // keep chartData referenced to avoid TS "unused" warning while recharts
+  // import stays active for future use.
+  void chartData;
 
   return (
     <div className="space-y-6">
@@ -160,25 +207,33 @@ export function StockAnalysis() {
       {summaryLoading && <PageLoader text={`Loading ${symbol} data...`} />}
       {summaryError && (
         <ErrorMessage
-          message={`No data found for ${symbol}. Try fetching data first in Data Manager.`}
+          message={`No data found for ${symbol}. ${
+            (summaryError as Error)?.message || ""
+          } — try fetching data first in Data Manager.`}
           onRetry={() => refetch()}
         />
+      )}
+      {!summaryLoading && !summaryError && !s && (
+        <div className="p-6 rounded-lg border border-border bg-card text-sm text-muted-foreground">
+          No summary data returned for <strong>{symbol}</strong>. The backend
+          responded but the payload was empty.
+        </div>
       )}
 
       {s && (
         <>
           {/* Signal Banner */}
-          {signals?.signal && (
+          {signalValue && (
             <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card">
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">
                   Trading Signal for {symbol}
                 </p>
                 <div className="flex items-center gap-3 mt-1">
-                  <SignalBadge signal={signals.signal} />
-                  {signals.signal_strength !== undefined && (
+                  <SignalBadge signal={signalValue} />
+                  {signalStrength !== undefined && signalStrength !== null && (
                     <span className="text-sm text-muted-foreground">
-                      Strength: {(signals.signal_strength * 100).toFixed(0)}%
+                      Strength: {(signalStrength * 100).toFixed(0)}%
                     </span>
                   )}
                 </div>
@@ -497,27 +552,27 @@ export function StockAnalysis() {
           )}
 
           {/* Individual Signals */}
-          {signals?.signals && signals.signals.length > 0 && (
+          {sig?.signals && sig.signals.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Signal Breakdown</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {signals.signals.map((sig, i) => (
+                  {sig.signals.map((row: any, i: number) => (
                     <div
                       key={i}
                       className="flex items-center justify-between py-2 border-b border-border last:border-0"
                     >
                       <div>
                         <p className="text-sm font-medium text-foreground capitalize">
-                          {sig.type?.replace(/_/g, " ")}
+                          {(row.source || row.type)?.replace(/_/g, " ")}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {sig.description}
+                          {row.description}
                         </p>
                       </div>
-                      <SignalBadge signal={sig.signal} />
+                      <SignalBadge signal={row.type} />
                     </div>
                   ))}
                 </div>
