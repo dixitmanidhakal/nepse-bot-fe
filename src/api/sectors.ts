@@ -128,22 +128,62 @@ export const sectorsApi = {
   },
 
   getSectorStocks: async (
-    _sectorId: number,
+    sectorId: number,
     sort_by = "change_percent"
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): Promise<any> => {
-    // Free tier doesn't expose sector membership; return all live stocks sorted.
-    const live = await fetchLive();
-    const sorted = [...live].sort((a, b) => {
+    // 1) Resolve sectorId -> sector name (via the sector-indices master)
+    const sectors = await fetchSectors();
+    const match = sectors.find((s) => s.id === sectorId);
+    const sectorName =
+      match?.sectorMaster?.sectorDescription ||
+      match?.indexName ||
+      match?.indexCode ||
+      "";
+
+    const sortFn = (a: LiveStock, b: LiveStock) => {
       if (sort_by === "volume") return (b.volume ?? 0) - (a.volume ?? 0);
       if (sort_by === "turnover") return (b.turnover ?? 0) - (a.turnover ?? 0);
       return (b.percent_change ?? 0) - (a.percent_change ?? 0);
-    });
+    };
+
+    // 2) Try the new BE drill-down endpoint that joins securities+live
+    if (sectorName) {
+      try {
+        const { data } = await apiClient.get<{
+          sector: string;
+          count: number;
+          data: LiveStock[];
+        }>(
+          `/api/v1/free/indices/sectors/${encodeURIComponent(
+            sectorName
+          )}/stocks`,
+          { timeout: 15_000 }
+        );
+        if (data?.data?.length) {
+          const sorted = [...data.data].sort(sortFn);
+          return {
+            success: true,
+            status: "success",
+            sector: data.sector,
+            count: data.count,
+            stocks: sorted,
+            data: sorted,
+          };
+        }
+      } catch {
+        /* fall through */
+      }
+    }
+
+    // 3) Fallback: market-wide sorted list
+    const live = await fetchLive();
+    const sorted = [...live].sort(sortFn);
     return {
       success: true,
       status: "partial",
       message:
-        "Sector→stock mapping not available on free tier; showing market-wide sorted list",
+        "Sector→stock mapping not available; showing market-wide sorted list",
       stocks: sorted.slice(0, 50),
       data: sorted.slice(0, 50),
     };

@@ -1,12 +1,11 @@
 /**
  * Recommendations API.
  *
- * Primary source: the backend `/api/v1/recommendations/top` endpoint which
- * returns rich factor-scored recommendations computed from the historical
- * SQLite DB. If any of those endpoints fail (e.g. cold-start timeout or
- * deploy-specific breakage), we gracefully fall back to a client-side score
- * computed from the live market snapshot via `src/data` and
- * `src/analytics/recommendations`.
+ * Data-source cascade (freshest first):
+ *   1. `/api/v1/free/recommendations/top`  — scored from today's live snapshot
+ *   2. `/api/v1/recommendations/top`       — legacy, scored from bundled SQLite
+ *                                            (can be days/weeks old on free tier)
+ *   3. Client-side score from the live snapshot via `src/analytics`
  *
  * Page-facing signatures are preserved.
  */
@@ -120,6 +119,24 @@ export const recommendationsApi = {
       max_symbols?: number;
     } = {}
   ): Promise<TopResponse> => {
+    // 1) Try the fresh live-snapshot scorer first
+    try {
+      const { data } = await apiClient.get("/api/v1/free/recommendations/top", {
+        params: {
+          limit: params.limit,
+          action: params.action,
+          min_score: params.min_score,
+        },
+        timeout: 30_000,
+      });
+      if (data && Array.isArray(data.data) && data.data.length > 0) {
+        return data;
+      }
+    } catch {
+      /* fall through */
+    }
+
+    // 2) Legacy historical scorer (may be stale on free tier)
     try {
       const { data } = await apiClient.get("/api/v1/recommendations/top", {
         params,
@@ -127,11 +144,23 @@ export const recommendationsApi = {
       });
       return data;
     } catch {
+      // 3) Client-side fallback
       return fallbackTop(params.limit ?? 20, params.action);
     }
   },
 
   universe: async (): Promise<{ status: string; data: UniverseSummary }> => {
+    // Prefer the live-fresh universe summary so the UI never shows the
+    // stale "latest_date = 2026-04-15" from the bundled SQLite.
+    try {
+      const { data } = await apiClient.get(
+        "/api/v1/free/recommendations/universe",
+        { timeout: 15_000 }
+      );
+      if (data?.data?.latest_date) return data;
+    } catch {
+      /* fall through */
+    }
     try {
       const { data } = await apiClient.get("/api/v1/recommendations/universe");
       return data;

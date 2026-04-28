@@ -11,6 +11,7 @@ import { floorsheetApi } from "@/api/floorsheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoader } from "@/components/shared/LoadingSpinner";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
+import { FreshnessBanner } from "@/components/shared/FreshnessBanner";
 import { formatNumber, formatVolume } from "@/lib/utils";
 
 const POPULAR_SYMBOLS = [
@@ -96,6 +97,7 @@ export function Floorsheet() {
 
   return (
     <div className="space-y-6">
+      <FreshnessBanner source="floorsheet" />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">

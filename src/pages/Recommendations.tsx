@@ -14,6 +14,7 @@ import { recommendationsApi, type Recommendation } from "@/api/recommendations";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoader } from "@/components/shared/LoadingSpinner";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
+import { FreshnessBanner } from "@/components/shared/FreshnessBanner";
 
 type ActionFilter = "ALL" | "BUY" | "WATCH" | "AVOID";
 
@@ -24,21 +25,13 @@ export function Recommendations() {
   const [action, setAction] = useState<ActionFilter>("ALL");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  const {
-    data: universe,
-  } = useQuery({
+  const { data: universe } = useQuery({
     queryKey: ["rec-universe"],
     queryFn: recommendationsApi.universe,
     staleTime: 5 * 60_000,
   });
 
-  const {
-    data,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useQuery({
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["rec-top", limit, minScore, minRows, action],
     queryFn: () =>
       recommendationsApi.top({
@@ -53,7 +46,8 @@ export function Recommendations() {
   const toggleExpand = (sym: string) =>
     setExpanded((m) => ({ ...m, [sym]: !m[sym] }));
 
-  if (isLoading) return <PageLoader text="Scoring stocks across the universe..." />;
+  if (isLoading)
+    return <PageLoader text="Scoring stocks across the universe..." />;
   if (error) return <ErrorMessage message={(error as Error).message} />;
 
   const recs: Recommendation[] = data?.data ?? [];
@@ -64,6 +58,10 @@ export function Recommendations() {
 
   return (
     <div className="space-y-6">
+      <FreshnessBanner
+        source="recommendations"
+        note="Scores are recomputed from today's live snapshot when available; otherwise we fall back to the bundled historical dataset."
+      />
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -72,7 +70,8 @@ export function Recommendations() {
             Stock Recommendations
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Ranked by composite score: trend · momentum · volume · volatility · drawdown
+            Ranked by composite score: trend · momentum · volume · volatility ·
+            drawdown
             {universe?.data && (
               <>
                 {" · "}
@@ -91,16 +90,33 @@ export function Recommendations() {
           disabled={isFetching}
           className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-secondary hover:bg-accent text-sm font-medium text-foreground disabled:opacity-50"
         >
-          <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
+          <RefreshCw
+            className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`}
+          />
           Refresh
         </button>
       </div>
 
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-3">
-        <SummaryStat label="BUY" value={buyCount} color="text-green-400" Icon={TrendingUp} />
-        <SummaryStat label="WATCH" value={watchCount} color="text-yellow-400" Icon={Eye} />
-        <SummaryStat label="AVOID" value={avoidCount} color="text-red-400" Icon={ShieldAlert} />
+        <SummaryStat
+          label="BUY"
+          value={buyCount}
+          color="text-green-400"
+          Icon={TrendingUp}
+        />
+        <SummaryStat
+          label="WATCH"
+          value={watchCount}
+          color="text-yellow-400"
+          Icon={Eye}
+        />
+        <SummaryStat
+          label="AVOID"
+          value={avoidCount}
+          color="text-red-400"
+          Icon={ShieldAlert}
+        />
       </div>
 
       {/* Filters */}
@@ -243,14 +259,22 @@ function SummaryStat({
         <Icon className="w-5 h-5" />
       </div>
       <div>
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">
+          {label}
+        </p>
         <p className="text-2xl font-bold text-foreground">{value}</p>
       </div>
     </div>
   );
 }
 
-function FilterField({ label, control }: { label: string; control: React.ReactNode }) {
+function FilterField({
+  label,
+  control,
+}: {
+  label: string;
+  control: React.ReactNode;
+}) {
   return (
     <label className="block text-xs">
       <span className="text-muted-foreground block mb-1">{label}</span>
@@ -307,7 +331,10 @@ function RecRow({
     <>
       <tr className="hover:bg-accent/40 transition-colors">
         <td className="px-3 py-2">
-          <button onClick={onToggle} className="text-muted-foreground hover:text-foreground">
+          <button
+            onClick={onToggle}
+            className="text-muted-foreground hover:text-foreground"
+          >
             {expanded ? (
               <ChevronDown className="w-4 h-4" />
             ) : (
@@ -316,7 +343,9 @@ function RecRow({
           </button>
         </td>
         <td className="px-3 py-2 text-muted-foreground">{rank}</td>
-        <td className="px-3 py-2 font-semibold text-foreground">{rec.symbol}</td>
+        <td className="px-3 py-2 font-semibold text-foreground">
+          {rec.symbol}
+        </td>
         <td className="px-3 py-2 text-right font-bold text-primary">
           {rec.score.toFixed(1)}
         </td>
@@ -337,7 +366,9 @@ function RecRow({
             ? `${(rec.volatility_annualised * 100).toFixed(1)}%`
             : "—"}
         </td>
-        <td className="px-3 py-2 text-right">{fmtPct(rec.drawdown_from_high_pct, 1)}</td>
+        <td className="px-3 py-2 text-right">
+          {fmtPct(rec.drawdown_from_high_pct, 1)}
+        </td>
       </tr>
       {expanded && (
         <tr className="bg-background/40">
@@ -362,12 +393,16 @@ function RecRow({
                     <div key={k} className="text-xs">
                       <div className="flex items-center justify-between mb-0.5">
                         <span className="text-foreground capitalize">{k}</span>
-                        <span className="text-muted-foreground">{v.toFixed(2)}</span>
+                        <span className="text-muted-foreground">
+                          {v.toFixed(2)}
+                        </span>
                       </div>
                       <div className="h-1.5 bg-secondary rounded">
                         <div
                           className="h-full rounded bg-primary"
-                          style={{ width: `${Math.max(0, Math.min(100, v * 100))}%` }}
+                          style={{
+                            width: `${Math.max(0, Math.min(100, v * 100))}%`,
+                          }}
                         />
                       </div>
                     </div>
